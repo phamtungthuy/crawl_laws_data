@@ -44,14 +44,27 @@ class LawspiderSpider(scrapy.Spider):
         law_item['title'] = response.xpath("//div[@id='tab1']//div[@class='content1']//p[3]//text()").get()
         law_item['committee'] =  ''.join(map(str, response.xpath("//div[@id='tab1']//div[@class='content1']//table[1]/tr[2]/td[1]//text()").extract()[:2])).strip()
         if text_arrays != []:
-           text_arrays = [text for text in text_arrays if text.strip().strip() != '']
-           law_item['summary'] = [];
-           for i in range(3, len(text_arrays)):
-               if 'QUYẾT ĐỊNH' in text_arrays[i] or text_arrays[i].find("Chương") == 0 or text_arrays[i].find('Điều') == 0 or text_arrays[i].find('I.') == 0 or text_arrays[i].find('1.') == 0:
-                   break
-               law_item['summary'].append(text_arrays[i])
-               
-           print('*****************:', text_arrays)
+            text_arrays = [text for text in text_arrays if text.strip().strip() != '']
+            law_item['summary'] = [];
+            content_index = 0;
+            for i in range(3, len(text_arrays)):
+                if 'QUYẾT ĐỊNH' in text_arrays[i] or text_arrays[i].find("Chương") == 0 or text_arrays[i].find('Điều') == 0 or text_arrays[i].find('I.') == 0 or text_arrays[i].find('1.') == 0:
+                    if 'QUYẾT ĐỊNH' in text_arrays[i]:
+                        content_index = i + 1
+                    else: content_index = i
+                    break
+                law_item['summary'].append(text_arrays[i])
+            current_section_title = ''
+            current_section_content = []
+            law_item['sections'] = {}
+            for i in range(content_index, len(text_arrays)):  
+                if text_arrays[i].find('Điều') == 0:
+                    if current_section_title != '':
+                        law_item['sections'][current_section_title] = current_section_content
+                    current_section_title = text_arrays[i]
+                    current_section_content = []
+                else:
+                    current_section_content.append(text_arrays[i])
         yield law_item
         
         

@@ -20,4 +20,5 @@ class LawItem(scrapy.Item):
     title = scrapy.Field()
     committee = scrapy.Field()
     summary = scrapy.Field()
+    sections = scrapy.Field()
     # chapter = scrapy.Field()
