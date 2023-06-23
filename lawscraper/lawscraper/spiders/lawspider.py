@@ -37,9 +37,21 @@ class LawspiderSpider(scrapy.Spider):
         value = response.css(".content1 div:first-child b:nth-of-type(1)").get()
         if value is not None and 'Văn bản này đang cập nhật Nội dung' in value:
             return
+        text_arrays = response.xpath("//div[@id='tab1']//div[@class='content1']/div/div/div/p//text()").extract()
+        if text_arrays == []: text_arrays = response.xpath("//div[@id='tab1']//div[@class='content1']/div/div/p//text()").extract()
         law_item = LawItem()
         law_item['url'] = response.url
         law_item['title'] = response.xpath("//div[@id='tab1']//div[@class='content1']//p[3]//text()").get()
         law_item['committee'] =  ''.join(map(str, response.xpath("//div[@id='tab1']//div[@class='content1']//table[1]/tr[2]/td[1]//text()").extract()[:2])).strip()
-        
+        if text_arrays != []:
+           text_arrays = [text for text in text_arrays if text.strip().strip() != '']
+           law_item['summary'] = [];
+           for i in range(3, len(text_arrays)):
+               if 'QUYẾT ĐỊNH' in text_arrays[i] or text_arrays[i].find("Chương") == 0 or text_arrays[i].find('Điều') == 0 or text_arrays[i].find('I.') == 0 or text_arrays[i].find('1.') == 0:
+                   break
+               law_item['summary'].append(text_arrays[i])
+               
+           print('*****************:', text_arrays)
         yield law_item
+        
+        
