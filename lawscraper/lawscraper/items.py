@@ -11,14 +11,12 @@ class LawscraperItem(scrapy.Item):
     # name = scrapy.Field()
     pass
 
-# class LawSection(crapy.Item):
-#     section_title = scrapy.Field()
-#     section_content = scrapy.Field()
-
 class LawItem(scrapy.Item):
     url = scrapy.Field()
     title = scrapy.Field()
     committee = scrapy.Field()
     summary = scrapy.Field()
-    sections = scrapy.Field()
-    # chapter = scrapy.Field()
+    type = scrapy.Field()
+    chapters = scrapy.Field()
+    # sections = scrapy.Field()
+    # clauses = scrapy.Field()
