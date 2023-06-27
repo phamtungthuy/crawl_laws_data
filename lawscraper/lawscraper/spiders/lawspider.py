@@ -17,6 +17,32 @@ class LawspiderSpider(scrapy.Spider):
         }
     }
     
+    def int_to_roman(self, num):
+    # Mảng chứa các giá trị và ký hiệu của số La Mã
+        roman_map = [
+            (1000, 'M'),
+            (900, 'CM'),
+            (500, 'D'),
+            (400, 'CD'),
+            (100, 'C'),
+            (90, 'XC'),
+            (50, 'L'),
+            (40, 'XL'),
+            (10, 'X'),
+            (9, 'IX'),
+            (5, 'V'),
+            (4, 'IV'),
+            (1, 'I')
+        ]
+
+        roman_num = ''
+        for value, symbol in roman_map:
+            while num >= value:
+                roman_num += symbol
+                num -= value
+
+        return roman_num
+    
     def handleClauses(self, law_item, text_arrays, start, end):
         count = 1
         clauses = []
@@ -40,12 +66,15 @@ class LawspiderSpider(scrapy.Spider):
     def handleSections(self, law_item, text_arrays, start, end):
         arr = []
         check = False
+        count = 1
         for i in range(start, end):
-            if text_arrays[i].find('Điều') == 0:
-                if(len(text_arrays[i].split()) == 2):
-                    arr.append(((text_arrays[i] + text_arrays[i + 1]), i))
-                    check = True
-                else: arr.append((text_arrays[i], i))
+            if text_arrays[i].find('Điều') == 0 or text_arrays[i].find(f'{self.int_to_roman(count)}.') == 0:
+                # if(len(text_arrays[i].split()) == 2):
+                #     arr.append(((text_arrays[i] + text_arrays[i + 1]), i))
+                #     check = True
+            # else: 
+                arr.append((text_arrays[i], i))
+                count += 1
         sections = []
         if arr == []:
             sections = self.handleClauses(law_item, text_arrays, start, end)
@@ -83,6 +112,18 @@ class LawspiderSpider(scrapy.Spider):
             law_item['summary'].append(text_arrays[i])
         self.handleChapters(law_item, text_arrays, content_index, len(text_arrays))
     
+    def handleNghiDinh(self, law_item, text_arrays):
+        content_index = 0;
+        for i in range(2, len(text_arrays)):
+            if 'QUY ĐỊNH CHUNG' in text_arrays[i]:
+                content_index = i + 1
+                break
+            elif text_arrays[i].find('Điều') == 0 or text_arrays[i].find('Chương') == 0 or text_arrays[i].find('I. ') == 0:
+               content_index = i 
+               break 
+            law_item['summary'].append(text_arrays[i])
+        self.handleChapters(law_item, text_arrays, content_index, len(text_arrays))
+    
     def parse(self, response):
         laws = response.css('p.nqTitle')
         
@@ -92,34 +133,40 @@ class LawspiderSpider(scrapy.Spider):
 
         next_page_text = response.css('.cmPager a:last-child ::text').get()
         next_page_url = response.css('.cmPager a:last-child ::attr(href)').get()
-        if int(next_page_url.split('=')[-1]) > 1:
+        if int(next_page_url.split('=')[-1]) > 10:
             return
         if next_page_url is not None and next_page_text is not None and 'Trang sau' in next_page_text:
             next_page_url = 'https://thuvienphapluat.vn/page/' + next_page_url
-            self.printHello()
-            print('*********next_page*************')
-            print(next_page_text, next_page_url, int(next_page_url.split('=')[-1]))
             yield response.follow(next_page_url, callback = self.parse)
+    
+    
     
     
     def parse_law_page(self, response):
         value = response.css(".content1 div:first-child b:nth-of-type(1)").get()
         if value is not None and 'Văn bản này đang cập nhật Nội dung' in value:
             return
-        text_arrays = response.xpath("//div[@id='tab1']//div[@class='content1']/div/div/div/p//text()").extract()
-        if text_arrays == []: text_arrays = response.xpath("//div[@id='tab1']//div[@class='content1']/div/div/p//text()").extract()
+        tmp = response.xpath("//div[@id='tab1']//div[@class='content1']/div/div/div/p")
+        if tmp == []: tmp = response.xpath("//div[@id='tab1']//div[@class='content1']/div/div/p")
         law_item = LawItem()
         law_item['url'] = response.url
-        law_item['title'] = response.xpath("//div[@id='tab1']//div[@class='content1']//p[3]//text()").get().replace('\r\n', ' ')
+        # law_item['title'] = response.xpath("//div[@id='tab1']//div[@class='content1']//p[3]//text()").get().replace('\r\n', ' ')
         law_item['committee'] =  ''.join(map(str, response.xpath("//div[@id='tab1']//div[@class='content1']//table[1]/tr[2]/td[1]//text()").extract()[:2])).strip().replace('\r\n', ' ')
-        text_arrays = [text.replace('\r\n', ' ') for text in text_arrays if text.strip().strip() != '']
-        
+        text_arrays = []
+        for p in tmp:
+            arrays = p.xpath(".//text()").extract()
+            arrays = [text.replace('\r\n', ' ') for text in arrays if text.strip().strip() != '']
+            p_string = ' '.join(arrays)
+            if p_string != '':
+                text_arrays.append(' '.join(arrays))
         if text_arrays != []:
+            print('Test: ', text_arrays[0])
             law_item['type'] = text_arrays[0]
+            law_item['title'] = text_arrays[1]
             law_item['summary'] = [];
             if law_item['type']== "QUYẾT ĐỊNH":
-                    self.handleQuyetDinh(law_item, text_arrays)
-            
-            
+                self.handleQuyetDinh(law_item, text_arrays)
+            elif law_item['type'] == 'NGHỊ ĐỊNH' or law_item['type'] == 'KẾ HOẠCH' or law_item['type'] == 'THÔNG TƯ':
+                self.handleNghiDinh(law_item, text_arrays)
         yield law_item
         
