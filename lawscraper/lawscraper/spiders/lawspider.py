@@ -10,7 +10,7 @@ class LawspiderSpider(scrapy.Spider):
     sections = []
     custom_settings = {
         'FEEDS': {
-            'vanbanphapluat.json': {
+            'vanbanphapluat1.json': {
                 'format': 'json',
                 'overwrite': True
             }
