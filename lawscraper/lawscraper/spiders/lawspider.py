@@ -129,7 +129,8 @@ class LawspiderSpider(scrapy.Spider):
         
         for law in laws:
             law_url = law.css("a ::attr('href')").get()
-            yield response.follow(law_url, callback = self.parse_law_page)
+            yield response.follow(law_url, callback = self.parse_law_page, 
+                                  meta ={"proxy": "http://phamtungthuy-rotate:tungthuy47@p.webshare.io:80"})
 
         next_page_text = response.css('.cmPager a:last-child ::text').get()
         next_page_url = response.css('.cmPager a:last-child ::attr(href)').get()
@@ -137,7 +138,8 @@ class LawspiderSpider(scrapy.Spider):
             return
         if next_page_url is not None and next_page_text is not None and 'Trang sau' in next_page_text:
             next_page_url = 'https://thuvienphapluat.vn/page/' + next_page_url
-            yield response.follow(next_page_url, callback = self.parse)
+            yield response.follow(next_page_url, callback = self.parse, 
+                                  meta ={"proxy": "http://phamtungthuy-rotate:tungthuy47@p.webshare.io:80"})
     
     
     
